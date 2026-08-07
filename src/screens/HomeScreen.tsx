@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { card, colors } from '../theme';
 import { CalendarEvent, EmailMessage, IntegrationStatus, MoneySummary, Task } from '../types';
+import { WidgetDataService } from '../services/WidgetDataService';
 
 type BriefData = {
   status: IntegrationStatus;
@@ -82,6 +83,7 @@ export function HomeScreen({ navigation }: any) {
       setBrief({ status: disconnectedStatus, events: [], emails: [], tasks: [] });
       setNotice('Your connected services could not be reached. Pull down to try again.');
     } finally {
+      WidgetDataService.refresh().catch(()=>{});
       setLoading(false);
       setRefreshing(false);
     }

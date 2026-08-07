@@ -38,3 +38,8 @@ CREATE TABLE IF NOT EXISTS recurring_bills (id UUID PRIMARY KEY DEFAULT gen_rand
 CREATE TABLE IF NOT EXISTS transactions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, description TEXT NOT NULL, amount NUMERIC(12,2) NOT NULL, category TEXT NOT NULL, type TEXT NOT NULL CHECK(type IN ('expense','income')), transaction_date DATE NOT NULL, source TEXT NOT NULL DEFAULT 'manual', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS savings_goals (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, target_amount NUMERIC(12,2) NOT NULL, current_amount NUMERIC(12,2) NOT NULL DEFAULT 0, target_date DATE);
 CREATE INDEX IF NOT EXISTS bills_user_due_idx ON recurring_bills(user_id,next_due_date); CREATE INDEX IF NOT EXISTS transactions_user_date_idx ON transactions(user_id,transaction_date);
+CREATE TABLE IF NOT EXISTS widget_preferences (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  preferences JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
