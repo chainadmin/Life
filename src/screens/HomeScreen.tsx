@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { card, colors } from '../theme';
-import { CalendarEvent, EmailMessage, IntegrationStatus, MoneySummary, Task } from '../types';
+import { AssistantPersonality, CalendarEvent, EmailMessage, IntegrationStatus, MoneySummary, Task } from '../types';
 import { WidgetDataService } from '../services/WidgetDataService';
 
 type BriefData = {
@@ -28,16 +28,28 @@ function needsReply(message: EmailMessage) {
   return !automated && (/\?|please|could you|can you|let me know|reply|confirm|approval|review/.test(text));
 }
 
-function assistantSummary(data: BriefData) {
+function assistantSummary(data: BriefData, personality: AssistantPersonality = 'friendly') {
   const { events, emails, status, tasks } = data;
   const replyCount = emails.filter(needsReply).length;
   const due=tasks.filter(t=>!t.completed&&t.dueDate&&new Date(t.dueDate).toDateString()===new Date().toDateString());
-  if(due.length) return `You have ${due.length===1?'one thing':`${due.length} things`} to finish today. ${due.slice(0,3).map(t=>t.title).join(' • ')}`;
+  if(due.length) {
+    const count=due.length===1?'one task':`${due.length} tasks`; const names=due.slice(0,3).map(t=>t.title).join(' • ');
+    if(personality==='direct') return `${count[0].toUpperCase()+count.slice(1)} due today. ${names}`;
+    if(personality==='professional') return `You have ${count} scheduled for completion today. ${names}`;
+    if(personality==='calm') return `You have ${count} left today. You can work through them steadily. ${names}`;
+    if(personality==='encouraging') return `You have ${count} left today. Start with one achievable next step. ${names}`;
+    if(personality==='playful') return `You have ${count} left today—time to give that list a little trim. ${names}`;
+    return `You’ve got ${count} left today. Let’s take them one at a time. ${names}`;
+  }
   if (!status.calendar.connected && !status.gmail.connected) return 'Your task list is clear today. Connect Calendar or Gmail when you want a more personal brief.';
   if (status.calendar.connected && status.gmail.connected) {
     if (!events.length && !replyCount) return 'Today looks clear. Nothing urgent is standing out, so you have room to focus on what matters to you.';
     const dayShape = events.length > 3 ? 'fairly busy' : events.length ? 'pretty manageable' : 'mostly open';
-    return `Today looks ${dayShape}. You have ${plural(events.length, 'appointment')} and ${replyCount === 1 ? 'one email that probably needs a reply' : `${replyCount} emails that may need replies`}.`;
+    const emailText=replyCount===1?'one email that may need a response':`${replyCount} emails that may need responses`;
+    if(personality==='direct') return `${plural(events.length, 'appointment')} today. ${emailText}.`;
+    if(personality==='professional') return `You have ${plural(events.length, 'scheduled appointment')} today and ${emailText}.`;
+    if(personality==='friendly') return `Today looks ${dayShape}. You’ve got ${plural(events.length, 'appointment')} and ${emailText}.`;
+    return `Today looks ${dayShape}. You have ${plural(events.length, 'appointment')} and ${emailText}.`;
   }
   if (status.calendar.connected) return events.length ? `You have ${plural(events.length, 'appointment')} today. ${events.length < 3 ? 'There should still be time for other things.' : 'It may help to leave some breathing room between them.'}` : 'Your calendar is open today. You have room to decide what matters most.';
   return replyCount ? `${replyCount === 1 ? 'One email probably needs' : `${replyCount} emails may need`} a reply. The rest can likely wait.` : 'Your unread email looks manageable. Nothing obvious needs an immediate reply.';
@@ -110,7 +122,7 @@ export function HomeScreen({ navigation }: any) {
       <View style={s.header}>
         <Text style={s.greeting}>{greeting}, {profile?.firstName || 'there'}</Text>
         <Text style={s.date}>{date}</Text>
-        {loading ? <View style={s.loading}><ActivityIndicator color={colors.green} /><Text style={s.muted}>Putting your brief together…</Text></View> : <Text style={s.summary}>{assistantSummary(brief!)}</Text>}
+        {loading ? <View style={s.loading}><ActivityIndicator color={colors.green} /><Text style={s.muted}>Putting your brief together…</Text></View> : <Text style={s.summary}>{assistantSummary(brief!, profile?.assistantPersonality)}</Text>}
       </View>
 
       {notice ? <Text style={s.notice}>{notice}</Text> : null}

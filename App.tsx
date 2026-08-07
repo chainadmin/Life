@@ -18,6 +18,7 @@ import { MoneyScreen } from './src/screens/MoneyScreen';
 import { BudgetSetupScreen } from './src/screens/BudgetSetupScreen';
 import { WidgetSettingsScreen } from './src/screens/WidgetSettingsScreen';
 import { WidgetPreviewScreen } from './src/screens/WidgetPreviewScreen';
+import { AssistantStyleScreen } from './src/screens/AssistantStyleScreen';
 import { WidgetDataService } from './src/services/WidgetDataService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -40,6 +41,7 @@ export default function App() {
     <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
     <Stack.Screen name="Guided" component={GuidedAssistantScreen} options={({ route }) => ({ title: route.params.category })} />
     <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Your assistant' }} />
+    <Stack.Screen name="AssistantStyle" component={AssistantStyleScreen} options={{ title: 'Assistant Style' }} />
     <Stack.Screen name="ConnectedServices" component={ConnectedServicesScreen} options={{ title: 'Connected Services' }} />
     <Stack.Screen name="CalendarAssistant" component={CalendarAssistantScreen} options={{ title: 'Calendar' }} />
     <Stack.Screen name="EmailAssistant" component={EmailAssistantScreen} options={{ title: 'Email' }} />
