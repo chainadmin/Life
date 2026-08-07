@@ -7,7 +7,7 @@ import { googleCalendar } from '../services/GoogleCalendarService.js';
 import { gmailService } from '../services/GmailService.js';
 
 export const googleRouter=Router();
-const route=(fn:(req:AuthRequest,res:Response)=>Promise<void>)=>async(req:AuthRequest,res:Response)=>{try{await fn(req,res);}catch(e){if(e instanceof GoogleConnectionError){res.status(e.code==='reconnect'?401:e.code==='permission'?403:502).json({error:e.message,code:e.code});return;}console.error(e);res.status(500).json({error:e instanceof Error?e.message:'Something went wrong. Please try again.'});}};
+const route=(fn:(req:AuthRequest,res:Response)=>Promise<unknown>)=>async(req:AuthRequest,res:Response)=>{try{await fn(req,res);}catch(e){if(e instanceof GoogleConnectionError){res.status(e.code==='reconnect'?401:e.code==='permission'?403:502).json({error:e.message,code:e.code});return;}console.error(e);res.status(500).json({error:e instanceof Error?e.message:'Something went wrong. Please try again.'});}};
 googleRouter.get('/status',route(async(req,res)=>res.json(await googleAccounts.status(req.userId!))));
 googleRouter.post('/connect',route(async(req,res)=>{const b=z.object({feature:z.enum(['calendar','gmail']),calendarActions:z.boolean().optional()}).parse(req.body);res.json(googleAccounts.authorizationUrl(req.userId!,b.feature,b.calendarActions));}));
 googleRouter.delete('/:feature',route(async(req,res)=>{const feature=z.enum(['calendar','gmail']).parse(req.params.feature);await googleAccounts.disconnect(req.userId!,feature);res.status(204).end();}));
