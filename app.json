@@ -2,13 +2,26 @@
   "expo": {
     "name": "MyAssistant",
     "slug": "myassistant",
-    "scheme": "myassistant",
+    "scheme": [
+      "myassistant",
+      "app"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "splash": { "backgroundColor": "#F8F5EF" },
-    "ios": { "supportsTablet": true },
-    "android": { "adaptiveIcon": { "backgroundColor": "#F8F5EF" } },
-    "web": { "bundler": "metro" }
+    "splash": {
+      "backgroundColor": "#F8F5EF"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F8F5EF"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
   }
 }

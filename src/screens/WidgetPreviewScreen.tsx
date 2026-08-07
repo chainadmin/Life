@@ -1,0 +1,8 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { WidgetCard, WidgetSize } from '../components/WidgetCard';
+import { colors } from '../theme';
+import { getWidgetPreferences, WidgetDataService } from '../services/WidgetDataService';
+import { WidgetData, WidgetPreferences } from '../types';
+export function WidgetPreviewScreen(){const [data,setData]=useState<WidgetData>();const [prefs,setPrefs]=useState<WidgetPreferences>();const [refreshing,setRefreshing]=useState(false);const load=useCallback(async()=>{setRefreshing(true);setPrefs(await getWidgetPreferences());setData(await WidgetDataService.refresh());setRefreshing(false);},[]);useEffect(()=>{load();},[load]);return <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load}/>} contentContainerStyle={s.page}><Text style={s.help}>These previews use the same cached data, privacy rules, and links as the native widgets.</Text>{data&&prefs?(['small','medium','large'] as WidgetSize[]).map(size=><View key={size} style={s.block}><Text style={s.title}>{size[0].toUpperCase()+size.slice(1)} Widget</Text><WidgetCard size={size} data={data} preferences={prefs} onLink={url=>Linking.openURL(url)}/></View>):<ActivityIndicator color={colors.green}/>}</ScrollView>}
+const s=StyleSheet.create({page:{padding:20,paddingBottom:50,gap:24,alignItems:'center'},help:{color:colors.muted,lineHeight:20,alignSelf:'stretch'},block:{gap:10,alignItems:'center'},title:{fontSize:16,fontWeight:'800',color:colors.ink,alignSelf:'flex-start'}});

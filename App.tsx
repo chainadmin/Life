@@ -16,8 +16,12 @@ import { EmailAssistantScreen } from './src/screens/EmailAssistantScreen';
 import { TaskDetailScreen } from './src/screens/TaskDetailScreen';
 import { MoneyScreen } from './src/screens/MoneyScreen';
 import { BudgetSetupScreen } from './src/screens/BudgetSetupScreen';
+import { WidgetSettingsScreen } from './src/screens/WidgetSettingsScreen';
+import { WidgetPreviewScreen } from './src/screens/WidgetPreviewScreen';
+import { WidgetDataService } from './src/services/WidgetDataService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const linking:any={prefixes:['myassistant://','app://'],config:{screens:{Main:{screens:{Tasks:'tasks'}},Money:'money',CalendarAssistant:'calendar',EmailAssistant:'email'}}};
 
 function Splash() {
   return <View style={{ flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', gap: 16 }}><View style={{ width: 76, height: 76, borderRadius: 24, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: 'white', fontSize: 34, fontWeight: '800' }}>M</Text></View><Text style={{ fontSize: 26, fontWeight: '700', color: colors.ink }}>MyAssistant</Text><ActivityIndicator color={colors.green} /></View>;
@@ -26,9 +30,9 @@ function Splash() {
 export default function App() {
   const [ready, setReady] = useState(false);
   const [initial, setInitial] = useState<keyof RootStackParamList>('Welcome');
-  useEffect(() => { AsyncStorage.getItem('session').then(s => { if (s) setInitial('Main'); }).finally(() => setTimeout(() => setReady(true), 650)); }, []);
+  useEffect(() => { AsyncStorage.getItem('session').then(s => { if (s) { setInitial('Main'); WidgetDataService.refresh().catch(()=>{}); } }).finally(() => setTimeout(() => setReady(true), 650)); }, []);
   if (!ready) return <Splash />;
-  return <AuthProvider><NavigationContainer><Stack.Navigator initialRouteName={initial} screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.cream }, headerTintColor: colors.ink, contentStyle: { backgroundColor: colors.cream } }}>
+  return <AuthProvider><NavigationContainer linking={linking}><Stack.Navigator initialRouteName={initial} screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.cream }, headerTintColor: colors.ink, contentStyle: { backgroundColor: colors.cream } }}>
     <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
     <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Welcome back' }} />
     <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Create account' }} />
@@ -42,5 +46,7 @@ export default function App() {
     <Stack.Screen name="TaskDetail" component={TaskDetailScreen} options={{ title: 'Task' }} />
     <Stack.Screen name="Money" component={MoneyScreen} options={{ title: 'Money' }} />
     <Stack.Screen name="BudgetSetup" component={BudgetSetupScreen} options={{ title: 'Set up your budget' }} />
+    <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} options={{ title: 'Home Screen Widget' }} />
+    <Stack.Screen name="WidgetPreview" component={WidgetPreviewScreen} options={{ title: 'Widget Preview' }} />
   </Stack.Navigator></NavigationContainer></AuthProvider>;
 }
