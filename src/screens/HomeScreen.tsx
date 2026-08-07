@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { card, colors } from '../theme';
-import { CalendarEvent, EmailMessage, IntegrationStatus, Task } from '../types';
+import { CalendarEvent, EmailMessage, IntegrationStatus, MoneySummary, Task } from '../types';
 
 type BriefData = {
   status: IntegrationStatus;
@@ -48,6 +48,7 @@ export function HomeScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notice, setNotice] = useState('');
+  const [money, setMoney] = useState<MoneySummary>();
 
   useEffect(() => {
     if (profile) return;
@@ -71,6 +72,7 @@ export function HomeScreen({ navigation }: any) {
         status.gmail.connected ? api.gmailUnread() : Promise.resolve([]),
         api.getTasks(),
       ]);
+      api.moneySummary().then(setMoney).catch(()=>setMoney(undefined));
       const events = eventsResult.status === 'fulfilled' ? eventsResult.value : [];
       const emails = emailsResult.status === 'fulfilled' ? emailsResult.value : [];
       if (eventsResult.status === 'rejected' || emailsResult.status === 'rejected') setNotice('Some connected information could not be refreshed. Your other details are still shown.');
@@ -114,6 +116,9 @@ export function HomeScreen({ navigation }: any) {
       {!loading && <>
         <Section title="Tasks" icon="✓">
           {(()=>{const today=brief?.tasks.filter(t=>!t.completed&&t.dueDate&&new Date(t.dueDate).toDateString()===new Date().toDateString())||[];const overdue=brief?.tasks.filter(t=>!t.completed&&t.dueDate&&new Date(t.dueDate)<new Date()&&new Date(t.dueDate).toDateString()!==new Date().toDateString())||[];return <><Text style={s.primary}>{today.length} due today</Text><Text style={[s.detail,overdue.length>0&&{color:colors.danger}]}>{overdue.length} overdue</Text>{today.slice(0,3).map(t=><Text key={t.id} style={s.detail}>• {t.title}</Text>)}<Action label="View tasks" onPress={()=>navigation.navigate('Tasks')}/></>})()}
+        </Section>
+        <Section title="Money" icon="$">
+          {money?.availableToday!=null?<><Text style={s.primary}>You have about ${Math.round(money.availableToday).toLocaleString()} available today.</Text>{money.nextBill&&<Text style={s.detail}>Next bill: {money.nextBill.name} — ${Math.round(money.nextBill.amount).toLocaleString()} {new Date(`${money.nextBill.nextDueDate}T12:00:00`).toLocaleDateString([],{weekday:'long'})}</Text>}<Action label="View Money" onPress={()=>navigation.getParent()?.navigate('Money')}/></>:<><Text style={s.primary}>Set up your budget and I can estimate what you can safely spend each day.</Text><Action label="Set Up Budget" onPress={()=>navigation.getParent()?.navigate('BudgetSetup')}/></>}
         </Section>
         <Section title="Your day" icon="☀">
           {brief?.status.calendar.connected ? (
