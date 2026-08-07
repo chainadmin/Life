@@ -13,6 +13,7 @@ import { ChatScreen } from './src/screens/ChatScreen';
 import { ConnectedServicesScreen } from './src/screens/ConnectedServicesScreen';
 import { CalendarAssistantScreen } from './src/screens/CalendarAssistantScreen';
 import { EmailAssistantScreen } from './src/screens/EmailAssistantScreen';
+import { TaskDetailScreen } from './src/screens/TaskDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -36,5 +37,6 @@ export default function App() {
     <Stack.Screen name="ConnectedServices" component={ConnectedServicesScreen} options={{ title: 'Connected Services' }} />
     <Stack.Screen name="CalendarAssistant" component={CalendarAssistantScreen} options={{ title: 'Calendar' }} />
     <Stack.Screen name="EmailAssistant" component={EmailAssistantScreen} options={{ title: 'Email' }} />
+    <Stack.Screen name="TaskDetail" component={TaskDetailScreen} options={{ title: 'Task' }} />
   </Stack.Navigator></NavigationContainer></AuthProvider>;
 }

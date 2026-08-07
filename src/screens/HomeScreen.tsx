@@ -4,12 +4,13 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { card, colors } from '../theme';
-import { CalendarEvent, EmailMessage, IntegrationStatus } from '../types';
+import { CalendarEvent, EmailMessage, IntegrationStatus, Task } from '../types';
 
 type BriefData = {
   status: IntegrationStatus;
   events: CalendarEvent[];
   emails: EmailMessage[];
+  tasks: Task[];
 };
 
 const disconnectedStatus: IntegrationStatus = {
@@ -27,9 +28,11 @@ function needsReply(message: EmailMessage) {
 }
 
 function assistantSummary(data: BriefData) {
-  const { events, emails, status } = data;
+  const { events, emails, status, tasks } = data;
   const replyCount = emails.filter(needsReply).length;
-  if (!status.calendar.connected && !status.gmail.connected) return 'I can help you plan your day. Connect Calendar or Gmail when you want a more personal brief.';
+  const due=tasks.filter(t=>!t.completed&&t.dueDate&&new Date(t.dueDate).toDateString()===new Date().toDateString());
+  if(due.length) return `You have ${due.length===1?'one thing':`${due.length} things`} to finish today. ${due.slice(0,3).map(t=>t.title).join(' • ')}`;
+  if (!status.calendar.connected && !status.gmail.connected) return 'Your task list is clear today. Connect Calendar or Gmail when you want a more personal brief.';
   if (status.calendar.connected && status.gmail.connected) {
     if (!events.length && !replyCount) return 'Today looks clear. Nothing urgent is standing out, so you have room to focus on what matters to you.';
     const dayShape = events.length > 3 ? 'fairly busy' : events.length ? 'pretty manageable' : 'mostly open';
@@ -63,16 +66,18 @@ export function HomeScreen({ navigation }: any) {
     setNotice('');
     try {
       const status = await api.integrationStatus();
-      const [eventsResult, emailsResult] = await Promise.allSettled([
+      const [eventsResult, emailsResult, tasksResult] = await Promise.allSettled([
         status.calendar.connected ? api.calendarToday() : Promise.resolve([]),
         status.gmail.connected ? api.gmailUnread() : Promise.resolve([]),
+        api.getTasks(),
       ]);
       const events = eventsResult.status === 'fulfilled' ? eventsResult.value : [];
       const emails = emailsResult.status === 'fulfilled' ? emailsResult.value : [];
       if (eventsResult.status === 'rejected' || emailsResult.status === 'rejected') setNotice('Some connected information could not be refreshed. Your other details are still shown.');
-      setBrief({ status, events: [...events].sort((a, b) => +new Date(a.start) - +new Date(b.start)), emails });
+      const tasks=tasksResult.status==='fulfilled'?tasksResult.value:[];
+      setBrief({ status, events: [...events].sort((a, b) => +new Date(a.start) - +new Date(b.start)), emails, tasks });
     } catch {
-      setBrief({ status: disconnectedStatus, events: [], emails: [] });
+      setBrief({ status: disconnectedStatus, events: [], emails: [], tasks: [] });
       setNotice('Your connected services could not be reached. Pull down to try again.');
     } finally {
       setLoading(false);
@@ -107,6 +112,9 @@ export function HomeScreen({ navigation }: any) {
       {notice ? <Text style={s.notice}>{notice}</Text> : null}
 
       {!loading && <>
+        <Section title="Tasks" icon="✓">
+          {(()=>{const today=brief?.tasks.filter(t=>!t.completed&&t.dueDate&&new Date(t.dueDate).toDateString()===new Date().toDateString())||[];const overdue=brief?.tasks.filter(t=>!t.completed&&t.dueDate&&new Date(t.dueDate)<new Date()&&new Date(t.dueDate).toDateString()!==new Date().toDateString())||[];return <><Text style={s.primary}>{today.length} due today</Text><Text style={[s.detail,overdue.length>0&&{color:colors.danger}]}>{overdue.length} overdue</Text>{today.slice(0,3).map(t=><Text key={t.id} style={s.detail}>• {t.title}</Text>)}<Action label="View tasks" onPress={()=>navigation.navigate('Tasks')}/></>})()}
+        </Section>
         <Section title="Your day" icon="☀">
           {brief?.status.calendar.connected ? (
             brief.events.length ? <>
