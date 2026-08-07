@@ -10,6 +10,9 @@ import { WelcomeScreen, LoginScreen, RegisterScreen, FirstSetupScreen } from './
 import { MainTabs } from './src/navigation/MainTabs';
 import { GuidedAssistantScreen } from './src/screens/GuidedAssistantScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
+import { ConnectedServicesScreen } from './src/screens/ConnectedServicesScreen';
+import { CalendarAssistantScreen } from './src/screens/CalendarAssistantScreen';
+import { EmailAssistantScreen } from './src/screens/EmailAssistantScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -30,5 +33,8 @@ export default function App() {
     <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
     <Stack.Screen name="Guided" component={GuidedAssistantScreen} options={({ route }) => ({ title: route.params.category })} />
     <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Your assistant' }} />
+    <Stack.Screen name="ConnectedServices" component={ConnectedServicesScreen} options={{ title: 'Connected Services' }} />
+    <Stack.Screen name="CalendarAssistant" component={CalendarAssistantScreen} options={{ title: 'Calendar' }} />
+    <Stack.Screen name="EmailAssistant" component={EmailAssistantScreen} options={{ title: 'Email' }} />
   </Stack.Navigator></NavigationContainer></AuthProvider>;
 }

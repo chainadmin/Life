@@ -1,0 +1,12 @@
+import { googleAccounts, GOOGLE_SCOPES, GoogleConnectionError } from './GoogleAccountService.js';
+const decode=(v='')=>Buffer.from(v.replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8');
+async function call(token:string,path:string,init?:RequestInit){const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`,{...init,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...init?.headers}});const d:any=await r.json();if(!r.ok)throw new GoogleConnectionError(r.status===401?'reconnect':'google','We could not reach your email. Please try again.');return d;}
+function body(payload:any):string { if(payload?.body?.data)return decode(payload.body.data); for(const p of payload?.parts||[]){if(p.mimeType==='text/plain'&&p.body?.data)return decode(p.body.data);const nested=body(p);if(nested)return nested;}return '';}
+export class GmailService {
+  private async list(userId:string,q:string,limit=10){const token=await googleAccounts.token(userId,GOOGLE_SCOPES.gmail);const p=new URLSearchParams({q,maxResults:String(Math.min(limit,25))});const list=await call(token,`messages?${p}`);return Promise.all((list.messages||[]).map((m:any)=>this.getMessageWithToken(token,m.id)));}
+  getRecentInbox(userId:string,limit=10){return this.list(userId,'in:inbox',limit);} getUnreadMessages(userId:string){return this.list(userId,'in:inbox is:unread',10);} searchMessages(userId:string,q:string){return this.list(userId,q,10);}
+  async getMessage(userId:string,id:string){const token=await googleAccounts.token(userId,GOOGLE_SCOPES.gmail);return this.getMessageWithToken(token,id);}
+  private async getMessageWithToken(token:string,id:string){const m=await call(token,`messages/${encodeURIComponent(id)}?format=full`);const h=Object.fromEntries((m.payload?.headers||[]).map((x:any)=>[x.name.toLowerCase(),x.value]));return {id:m.id,threadId:m.threadId,from:h.from||'',to:h.to||'',subject:h.subject||'(No subject)',date:h.date||'',snippet:m.snippet||'',body:body(m.payload)};}
+  async createDraft(userId:string,to:string,subject:string,text:string){const token=await googleAccounts.token(userId,GOOGLE_SCOPES.gmail);const raw=Buffer.from(`To: ${to}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${text}`).toString('base64url');return call(token,'drafts',{method:'POST',body:JSON.stringify({message:{raw}})});}
+}
+export const gmailService=new GmailService();

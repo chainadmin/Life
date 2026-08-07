@@ -2,6 +2,7 @@
   "expo": {
     "name": "MyAssistant",
     "slug": "myassistant",
+    "scheme": "myassistant",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
