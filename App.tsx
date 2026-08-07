@@ -14,6 +14,8 @@ import { ConnectedServicesScreen } from './src/screens/ConnectedServicesScreen';
 import { CalendarAssistantScreen } from './src/screens/CalendarAssistantScreen';
 import { EmailAssistantScreen } from './src/screens/EmailAssistantScreen';
 import { TaskDetailScreen } from './src/screens/TaskDetailScreen';
+import { MoneyScreen } from './src/screens/MoneyScreen';
+import { BudgetSetupScreen } from './src/screens/BudgetSetupScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -38,5 +40,7 @@ export default function App() {
     <Stack.Screen name="CalendarAssistant" component={CalendarAssistantScreen} options={{ title: 'Calendar' }} />
     <Stack.Screen name="EmailAssistant" component={EmailAssistantScreen} options={{ title: 'Email' }} />
     <Stack.Screen name="TaskDetail" component={TaskDetailScreen} options={{ title: 'Task' }} />
+    <Stack.Screen name="Money" component={MoneyScreen} options={{ title: 'Money' }} />
+    <Stack.Screen name="BudgetSetup" component={BudgetSetupScreen} options={{ title: 'Set up your budget' }} />
   </Stack.Navigator></NavigationContainer></AuthProvider>;
 }
