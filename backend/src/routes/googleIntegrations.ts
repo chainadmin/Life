@@ -1,0 +1,23 @@
+import { Router, Response } from 'express';
+import OpenAI from 'openai';
+import { z } from 'zod';
+import { AuthRequest } from '../middleware/auth.js';
+import { googleAccounts, GoogleConnectionError } from '../services/GoogleAccountService.js';
+import { googleCalendar } from '../services/GoogleCalendarService.js';
+import { gmailService } from '../services/GmailService.js';
+
+export const googleRouter=Router();
+const route=(fn:(req:AuthRequest,res:Response)=>Promise<void>)=>async(req:AuthRequest,res:Response)=>{try{await fn(req,res);}catch(e){if(e instanceof GoogleConnectionError){res.status(e.code==='reconnect'?401:e.code==='permission'?403:502).json({error:e.message,code:e.code});return;}console.error(e);res.status(500).json({error:e instanceof Error?e.message:'Something went wrong. Please try again.'});}};
+googleRouter.get('/status',route(async(req,res)=>res.json(await googleAccounts.status(req.userId!))));
+googleRouter.post('/connect',route(async(req,res)=>{const b=z.object({feature:z.enum(['calendar','gmail']),calendarActions:z.boolean().optional()}).parse(req.body);res.json(googleAccounts.authorizationUrl(req.userId!,b.feature,b.calendarActions));}));
+googleRouter.delete('/:feature',route(async(req,res)=>{const feature=z.enum(['calendar','gmail']).parse(req.params.feature);await googleAccounts.disconnect(req.userId!,feature);res.status(204).end();}));
+googleRouter.get('/calendar/today',route(async(req,res)=>res.json(await googleCalendar.getTodayEvents(req.userId!))));
+googleRouter.get('/calendar/tomorrow',route(async(req,res)=>res.json(await googleCalendar.getTomorrowEvents(req.userId!))));
+googleRouter.get('/calendar/free-time',route(async(req,res)=>res.json(await googleCalendar.getFreeTime(req.userId!,String(req.query.date||new Date().toISOString().slice(0,10))))));
+googleRouter.post('/calendar/events',route(async(req,res)=>{const b=z.object({title:z.string().min(1).max(200),start:z.string().datetime(),end:z.string().datetime(),location:z.string().max(500).optional(),description:z.string().max(5000).optional()}).parse(req.body);res.status(201).json(await googleCalendar.createEvent(req.userId!,b));}));
+googleRouter.get('/gmail/recent',route(async(req,res)=>res.json(await gmailService.getRecentInbox(req.userId!,Number(req.query.limit)||10))));
+googleRouter.get('/gmail/unread',route(async(req,res)=>res.json(await gmailService.getUnreadMessages(req.userId!))));
+googleRouter.get('/gmail/search',route(async(req,res)=>res.json(await gmailService.searchMessages(req.userId!,z.string().min(1).parse(req.query.q)))));
+googleRouter.get('/gmail/message/:id',route(async(req,res)=>res.json(await gmailService.getMessage(req.userId!,String(req.params.id)))));
+googleRouter.post('/gmail/draft',route(async(req,res)=>{const b=z.object({to:z.string().min(3).max(320),subject:z.string().max(998),body:z.string().min(1).max(50000)}).parse(req.body);res.status(201).json(await gmailService.createDraft(req.userId!,b.to,b.subject,b.body));}));
+googleRouter.post('/gmail/suggest-reply',route(async(req,res)=>{if(!process.env.OPENAI_API_KEY){res.status(503).json({error:'Reply suggestions are not available yet.'});return;}const b=z.object({messageId:z.string().min(1)}).parse(req.body);const message=await gmailService.getMessage(req.userId!,b.messageId);const ai=new OpenAI({apiKey:process.env.OPENAI_API_KEY});const result=await ai.chat.completions.create({model:process.env.OPENAI_MODEL||'gpt-4.1-mini',messages:[{role:'system',content:'Write a concise, friendly email reply. Return only the draft. Do not claim it was sent or saved.'},{role:'user',content:`From: ${message.from}\nSubject: ${message.subject}\n\n${message.body||message.snippet}`} ]});res.json({to:message.from,subject:`Re: ${message.subject}`,body:result.choices[0]?.message.content||''});}));
