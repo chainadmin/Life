@@ -1,4 +1,189 @@
-import React, { useEffect, useState } from 'react'; import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'; import AsyncStorage from '@react-native-async-storage/async-storage'; import { useAuth } from '../context/AuthContext'; import { colors, card } from '../theme'; import { api } from '../services/api';
-const tasks = [{ title: 'Today', icon: '☀', text: 'Get help with your day' }, { title: 'Write Something', icon: '✎', text: 'Emails, texts, and more' }, { title: 'Plan Something', icon: '☑', text: 'Days, trips, and checklists' }, { title: 'Shopping Help', icon: '◈', text: 'Compare and decide' }, { title: 'Work Help', icon: '▣', text: 'Organize and communicate' }, { title: 'Ask Anything', icon: '?', text: 'Start with your own question' }];
-export function HomeScreen({ navigation }: any) { const { profile, setProfile } = useAuth(); const [brief,setBrief]=useState<{events:number;unread:number;first?:string}>(); useEffect(() => { if (profile) return; AsyncStorage.getItem('session').then(async token => { try { const p = token === 'guest' ? JSON.parse((await AsyncStorage.getItem('guestProfile')) || 'null') : await api.getProfile(); if (p) setProfile(p); } catch {} }); }, [profile]); useEffect(()=>{api.integrationStatus().then(async status=>{const [events,unread]=await Promise.all([status.calendar.connected?api.calendarToday():Promise.resolve([]),status.gmail.connected?api.gmailUnread():Promise.resolve([])]);setBrief({events:events.length,unread:unread.length,first:events[0]?.start});}).catch(()=>{});},[]); const hour = new Date().getHours(); const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'; return <ScrollView contentContainerStyle={s.page}><View><Text style={s.greeting}>{greeting}, {profile?.firstName || 'there'}</Text><Text style={s.lead}>What can I help you with?</Text></View><View style={s.grid}>{tasks.map(t => <Pressable key={t.title} style={({ pressed }) => [s.task, pressed && { opacity: .7 }]} onPress={() => t.title === 'Ask Anything' ? navigation.navigate('Chat') : navigation.navigate('Guided', { category: t.title })}><Text style={s.icon}>{t.icon}</Text><Text style={s.taskTitle}>{t.title}</Text><Text style={s.taskText}>{t.text}</Text></Pressable>)}</View><View style={s.brief}><Text style={{ fontSize: 22 }}>☀</Text><View style={{ flex: 1, gap: 7 }}><Text style={s.taskTitle}>Your Daily Brief</Text><Text style={s.taskText}>{brief ? `You have ${brief.events} calendar event${brief.events===1?'':'s'} today and ${brief.unread} unread email${brief.unread===1?'':'s'} that may need attention.${brief.first?` Your first event is at ${new Date(brief.first).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}.`:''}` : 'Connect Calendar or Gmail to see a calm summary of your day.'}</Text><View style={{flexDirection:'row',gap:16}}><Text style={{color:colors.green,fontWeight:'700'}} onPress={()=>navigation.getParent()?.navigate('CalendarAssistant')}>View Calendar</Text><Text style={{color:colors.green,fontWeight:'700'}} onPress={()=>navigation.getParent()?.navigate('EmailAssistant')}>Review Email</Text></View></View></View></ScrollView>; }
-const s = StyleSheet.create({ page: { padding: 20, paddingTop: 70, gap: 24, backgroundColor: colors.cream }, greeting: { color: colors.green, fontWeight: '700', fontSize: 17 }, lead: { color: colors.ink, fontWeight: '800', fontSize: 30, marginTop: 6 }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, task: { ...card, width: '48%', minHeight: 155, justifyContent: 'center', gap: 7 }, icon: { color: colors.green, fontSize: 25 }, taskTitle: { color: colors.ink, fontSize: 17, fontWeight: '700' }, taskText: { color: colors.muted, lineHeight: 20 }, brief: { ...card, flexDirection: 'row', gap: 13, backgroundColor: colors.paleGreen } });
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import { card, colors } from '../theme';
+import { CalendarEvent, EmailMessage, IntegrationStatus } from '../types';
+
+type BriefData = {
+  status: IntegrationStatus;
+  events: CalendarEvent[];
+  emails: EmailMessage[];
+};
+
+const disconnectedStatus: IntegrationStatus = {
+  calendar: { connected: false, needsReconnect: false },
+  gmail: { connected: false, needsReconnect: false },
+};
+
+const formatTime = (value: string) => new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const plural = (count: number, singular: string, pluralWord = `${singular}s`) => `${count} ${count === 1 ? singular : pluralWord}`;
+
+function needsReply(message: EmailMessage) {
+  const text = `${message.subject} ${message.snippet}`.toLowerCase();
+  const automated = /no-?reply|newsletter|digest|receipt|statement|notification|sale|offer|promotion/.test(`${message.from} ${text}`.toLowerCase());
+  return !automated && (/\?|please|could you|can you|let me know|reply|confirm|approval|review/.test(text));
+}
+
+function assistantSummary(data: BriefData) {
+  const { events, emails, status } = data;
+  const replyCount = emails.filter(needsReply).length;
+  if (!status.calendar.connected && !status.gmail.connected) return 'I can help you plan your day. Connect Calendar or Gmail when you want a more personal brief.';
+  if (status.calendar.connected && status.gmail.connected) {
+    if (!events.length && !replyCount) return 'Today looks clear. Nothing urgent is standing out, so you have room to focus on what matters to you.';
+    const dayShape = events.length > 3 ? 'fairly busy' : events.length ? 'pretty manageable' : 'mostly open';
+    return `Today looks ${dayShape}. You have ${plural(events.length, 'appointment')} and ${replyCount === 1 ? 'one email that probably needs a reply' : `${replyCount} emails that may need replies`}.`;
+  }
+  if (status.calendar.connected) return events.length ? `You have ${plural(events.length, 'appointment')} today. ${events.length < 3 ? 'There should still be time for other things.' : 'It may help to leave some breathing room between them.'}` : 'Your calendar is open today. You have room to decide what matters most.';
+  return replyCount ? `${replyCount === 1 ? 'One email probably needs' : `${replyCount} emails may need`} a reply. The rest can likely wait.` : 'Your unread email looks manageable. Nothing obvious needs an immediate reply.';
+}
+
+export function HomeScreen({ navigation }: any) {
+  const { profile, setProfile } = useAuth();
+  const [brief, setBrief] = useState<BriefData>();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    if (profile) return;
+    AsyncStorage.getItem('session').then(async token => {
+      try {
+        const savedProfile = token === 'guest' ? JSON.parse((await AsyncStorage.getItem('guestProfile')) || 'null') : await api.getProfile();
+        if (savedProfile) setProfile(savedProfile);
+      } catch {
+        // The brief remains useful without a profile.
+      }
+    });
+  }, [profile, setProfile]);
+
+  const loadBrief = useCallback(async (isRefresh = false) => {
+    isRefresh ? setRefreshing(true) : setLoading(true);
+    setNotice('');
+    try {
+      const status = await api.integrationStatus();
+      const [eventsResult, emailsResult] = await Promise.allSettled([
+        status.calendar.connected ? api.calendarToday() : Promise.resolve([]),
+        status.gmail.connected ? api.gmailUnread() : Promise.resolve([]),
+      ]);
+      const events = eventsResult.status === 'fulfilled' ? eventsResult.value : [];
+      const emails = emailsResult.status === 'fulfilled' ? emailsResult.value : [];
+      if (eventsResult.status === 'rejected' || emailsResult.status === 'rejected') setNotice('Some connected information could not be refreshed. Your other details are still shown.');
+      setBrief({ status, events: [...events].sort((a, b) => +new Date(a.start) - +new Date(b.start)), emails });
+    } catch {
+      setBrief({ status: disconnectedStatus, events: [], emails: [] });
+      setNotice('Your connected services could not be reached. Pull down to try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { loadBrief(); }, [loadBrief]);
+
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
+  const date = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  const replyEmails = useMemo(() => brief?.emails.filter(needsReply) ?? [], [brief]);
+  const laterEmails = (brief?.emails.length ?? 0) - replyEmails.length;
+  const firstEvent = brief?.events[0];
+  const connected = brief?.status.calendar.connected || brief?.status.gmail.connected;
+
+  const openRootScreen = (screen: 'CalendarAssistant' | 'EmailAssistant' | 'ConnectedServices') => navigation.getParent()?.navigate(screen);
+
+  return (
+    <ScrollView
+      style={s.screen}
+      contentContainerStyle={s.page}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadBrief(true)} tintColor={colors.green} />}
+    >
+      <View style={s.header}>
+        <Text style={s.greeting}>{greeting}, {profile?.firstName || 'there'}</Text>
+        <Text style={s.date}>{date}</Text>
+        {loading ? <View style={s.loading}><ActivityIndicator color={colors.green} /><Text style={s.muted}>Putting your brief together…</Text></View> : <Text style={s.summary}>{assistantSummary(brief!)}</Text>}
+      </View>
+
+      {notice ? <Text style={s.notice}>{notice}</Text> : null}
+
+      {!loading && <>
+        <Section title="Your day" icon="☀">
+          {brief?.status.calendar.connected ? (
+            brief.events.length ? <>
+              <Text style={s.primary}>{firstEvent ? `First up: ${firstEvent.title} at ${formatTime(firstEvent.start)}` : ''}</Text>
+              <Text style={s.detail}>{plural(brief.events.length, 'event')} on your calendar today.</Text>
+              {brief.events.slice(1, 3).map(event => <View style={s.row} key={event.id}><Text style={s.time}>{formatTime(event.start)}</Text><Text style={s.rowText} numberOfLines={1}>{event.title}</Text></View>)}
+              <Action label="View today’s calendar" onPress={() => openRootScreen('CalendarAssistant')} />
+            </> : <><Text style={s.primary}>Your calendar is open today.</Text><Text style={s.detail}>This could be a good day for focused work, errands, or a little breathing room.</Text><Action label="Plan something" onPress={() => navigation.navigate('Guided', { category: 'Plan Something' })} /></>
+          ) : <EmptyService service="Calendar" detail="See appointments and open time in your brief." onPress={() => openRootScreen('ConnectedServices')} />}
+        </Section>
+
+        <Section title="Needs attention" icon="!">
+          {brief?.status.gmail.connected ? (
+            replyEmails.length ? <>
+              <Text style={s.primary}>{replyEmails.length === 1 ? 'One email probably needs a reply.' : `${replyEmails.length} emails may need replies.`}</Text>
+              {replyEmails.slice(0, 2).map(email => <View style={s.email} key={email.id}><Text style={s.emailSubject} numberOfLines={1}>{email.subject || 'No subject'}</Text><Text style={s.detail} numberOfLines={1}>{email.from}</Text></View>)}
+              <Action label="Review email" onPress={() => openRootScreen('EmailAssistant')} />
+            </> : <><Text style={s.primary}>Nothing urgent is standing out.</Text><Text style={s.detail}>You can check your inbox later unless you’re waiting for something.</Text></>
+          ) : <EmptyService service="Gmail" detail="Surface messages that may need a reply." onPress={() => openRootScreen('ConnectedServices')} />}
+        </Section>
+
+        <Section title="Can wait" icon="○">
+          {brief?.status.gmail.connected ? <><Text style={s.primary}>{laterEmails ? `${plural(laterEmails, 'unread message')} can likely wait.` : 'No low-priority unread mail to set aside.'}</Text><Text style={s.detail}>{laterEmails ? 'These look like updates, receipts, or messages that do not ask for a response.' : 'Your inbox is not adding extra noise right now.'}</Text></> : <Text style={s.detail}>When Gmail is connected, routine updates will be separated from messages that need attention.</Text>}
+        </Section>
+
+        <Section title="You may want to" icon="→">
+          <View style={s.actions}>
+            {replyEmails.length > 0 && <Action label="Prepare a reply" onPress={() => openRootScreen('EmailAssistant')} />}
+            {brief?.status.calendar.connected && brief.events.length < 3 && <Action label="Use your open time" onPress={() => navigation.navigate('Guided', { category: 'Plan Something' })} />}
+            <Action label="Ask for help with something else" onPress={() => navigation.navigate('Chat')} />
+            {!connected && <Action label="Connect Calendar or Gmail" onPress={() => openRootScreen('ConnectedServices')} />}
+          </View>
+        </Section>
+      </>}
+      <Text style={s.refreshHint}>Pull down anytime to refresh your brief.</Text>
+    </ScrollView>
+  );
+}
+
+function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+  return <View style={s.section}><View style={s.sectionHeading}><View style={s.sectionIcon}><Text style={s.sectionIconText}>{icon}</Text></View><Text style={s.sectionTitle}>{title}</Text></View>{children}</View>;
+}
+
+function Action({ label, onPress }: { label: string; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s.action, pressed && s.pressed]}><Text style={s.actionText}>{label}</Text><Text style={s.chevron}>›</Text></Pressable>;
+}
+
+function EmptyService({ service, detail, onPress }: { service: string; detail: string; onPress: () => void }) {
+  return <><Text style={s.primary}>{service} is not connected.</Text><Text style={s.detail}>{detail}</Text><Action label={`Connect ${service}`} onPress={onPress} /></>;
+}
+
+const s = StyleSheet.create({
+  screen: { backgroundColor: colors.cream },
+  page: { padding: 20, paddingTop: 64, paddingBottom: 36, gap: 14 },
+  header: { gap: 5, marginBottom: 8 },
+  greeting: { color: colors.ink, fontWeight: '800', fontSize: 28 },
+  date: { color: colors.muted, fontSize: 15 },
+  summary: { color: colors.ink, fontSize: 18, lineHeight: 27, marginTop: 14, maxWidth: 560 },
+  loading: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
+  muted: { color: colors.muted },
+  notice: { color: colors.muted, backgroundColor: colors.peach, borderRadius: 12, padding: 12, lineHeight: 19 },
+  section: { ...card, gap: 9 },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 3 },
+  sectionIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.paleGreen, alignItems: 'center', justifyContent: 'center' },
+  sectionIconText: { color: colors.green, fontWeight: '800', fontSize: 16 },
+  sectionTitle: { color: colors.ink, fontWeight: '800', fontSize: 18, textTransform: 'uppercase', letterSpacing: .5 },
+  primary: { color: colors.ink, fontSize: 16, fontWeight: '700', lineHeight: 22 },
+  detail: { color: colors.muted, lineHeight: 20 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.border, gap: 10 },
+  time: { color: colors.green, fontWeight: '700', width: 72 },
+  rowText: { color: colors.ink, flex: 1 },
+  email: { borderLeftWidth: 3, borderLeftColor: colors.paleGreen, paddingLeft: 10, gap: 2 },
+  emailSubject: { color: colors.ink, fontWeight: '700' },
+  action: { minHeight: 43, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.border, marginTop: 3, paddingTop: 10 },
+  actionText: { color: colors.green, fontWeight: '700', fontSize: 15, flex: 1 },
+  chevron: { color: colors.green, fontSize: 24, lineHeight: 24 },
+  pressed: { opacity: .55 },
+  actions: { gap: 2 },
+  refreshHint: { color: colors.muted, textAlign: 'center', fontSize: 13, marginTop: 4 },
+});
