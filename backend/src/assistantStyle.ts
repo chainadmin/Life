@@ -2,7 +2,7 @@ export const assistantPersonalities = ['friendly', 'calm', 'direct', 'encouragin
 export const responseLengths = ['short', 'normal', 'detailed'] as const;
 export type AssistantPersonality = typeof assistantPersonalities[number];
 export type ResponseLength = typeof responseLengths[number];
-export type AssistantStyleProfile = { assistant_personality?: AssistantPersonality | null; response_length?: ResponseLength | null };
+export type AssistantStyleProfile = { assistant_name?: string | null; assistant_personality?: AssistantPersonality | null; response_length?: ResponseLength | null };
 
 const personalityInstructions: Record<AssistantPersonality, string[]> = {
   friendly: ['Be conversational and approachable.', 'Use occasional contractions.', 'Be warm, but not overly enthusiastic.'],
@@ -27,5 +27,6 @@ export function buildAssistantStylePrompt(profile?: AssistantStyleProfile | null
     'Never invent information or personal details.',
     'For financial, health, legal, safety, or other high-stakes topics, factual caution and clear uncertainty take priority over personality and response-length preferences.',
   ];
-  return `Assistant personality: ${personality.toUpperCase()}\nResponse length: ${responseLength.toUpperCase()}\n\nStyle instructions:\n${instructions.map(x => `- ${x}`).join('\n')}`;
+  const displayName = profile?.assistant_name || 'Assistant';
+  return `Assistant display name: ${displayName}\nCommunication style: ${personality.toUpperCase()}\nPreferred response length: ${responseLength.toUpperCase()}\n\nStyle instructions:\n${instructions.map(x => `- ${x}`).join('\n')}`;
 }

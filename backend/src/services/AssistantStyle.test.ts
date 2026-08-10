@@ -5,8 +5,9 @@ import { assistantPersonalities, buildAssistantStylePrompt } from '../assistantS
 test('buildAssistantStylePrompt includes every selected style and invariant safeguards', () => {
   for (const personality of assistantPersonalities) {
     const prompt = buildAssistantStylePrompt({ assistant_personality: personality, response_length: 'short' });
-    assert.match(prompt, new RegExp(`Assistant personality: ${personality.toUpperCase()}`));
-    assert.match(prompt, /Response length: SHORT/);
+    assert.match(prompt, new RegExp(`Communication style: ${personality.toUpperCase()}`));
+    assert.match(prompt, /Preferred response length: SHORT/);
+    assert.match(prompt, /Assistant display name: Assistant/);
     assert.match(prompt, /Do not alter facts, calculations/);
     assert.match(prompt, /high-stakes topics/);
     assert.match(prompt, /Never invent/);

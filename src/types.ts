@@ -1,9 +1,9 @@
 export type AssistantPersonality = 'friendly' | 'calm' | 'direct' | 'encouraging' | 'professional' | 'playful';
 export type ResponseLength = 'short' | 'normal' | 'detailed';
-export type Profile = { firstName: string; country: string; assistantPersonality: AssistantPersonality; responseLength: ResponseLength; primaryHelpCategory: string };
+export type Profile = { firstName: string; country: string; assistantAvatarId: string; assistantName: string; assistantPersonality: AssistantPersonality; responseLength: ResponseLength; primaryHelpCategory: string };
 export type Memory = { id: string; category: string; value: string; source: string; confirmedByUser: boolean };
 export type Message = { id: string; role: 'user' | 'assistant'; content: string };
-export type RootStackParamList = { Welcome: undefined; Login: undefined; Register: undefined; FirstSetup: { firstName?: string; token?: string; guest?: boolean } | undefined; Main: undefined; Guided: { category: string }; Chat: { category?: string; prompt?: string } | undefined; AssistantStyle: undefined; ConnectedServices: undefined; CalendarAssistant: undefined; EmailAssistant: undefined; TaskDetail:{taskId?:string;duplicateOf?:string}|undefined; Money: undefined; BudgetSetup: undefined; WidgetSettings: undefined; WidgetPreview: undefined };
+export type RootStackParamList = { Welcome: undefined; Login: undefined; Register: undefined; FirstSetup: { firstName?: string; token?: string; guest?: boolean } | undefined; Main: undefined; Guided: { category: string }; Chat: { category?: string; prompt?: string } | undefined; MyAssistant: undefined; ChangeAssistantPicture: undefined; ChangeAssistantName: undefined; AssistantStyle: undefined; ConnectedServices: undefined; CalendarAssistant: undefined; EmailAssistant: undefined; TaskDetail:{taskId?:string;duplicateOf?:string}|undefined; Money: undefined; BudgetSetup: undefined; WidgetSettings: undefined; WidgetPreview: undefined };
 export type IntegrationStatus={calendar:{connected:boolean;needsReconnect:boolean};gmail:{connected:boolean;needsReconnect:boolean}};
 export type CalendarEvent={id:string;title:string;start:string;end:string;location:string;description:string};
 export type EmailMessage={id:string;threadId:string;from:string;to:string;subject:string;date:string;snippet:string;body:string};
