@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { card, colors } from '../theme';
 import { AssistantPersonality, CalendarEvent, EmailMessage, IntegrationStatus, MoneySummary, Task } from '../types';
 import { WidgetDataService } from '../services/WidgetDataService';
+import { AssistantAvatar } from '../components/AssistantAvatar';
 
 type BriefData = {
   status: IntegrationStatus;
@@ -119,11 +120,7 @@ export function HomeScreen({ navigation }: any) {
       contentContainerStyle={s.page}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadBrief(true)} tintColor={colors.green} />}
     >
-      <View style={s.header}>
-        <Text style={s.greeting}>{greeting}, {profile?.firstName || 'there'}</Text>
-        <Text style={s.date}>{date}</Text>
-        {loading ? <View style={s.loading}><ActivityIndicator color={colors.green} /><Text style={s.muted}>Putting your brief together…</Text></View> : <Text style={s.summary}>{assistantSummary(brief!, profile?.assistantPersonality)}</Text>}
-      </View>
+      <View style={s.header}><View style={s.greetingRow}><AssistantAvatar avatarId={profile?.assistantAvatarId} size="small" /><View style={{ flex: 1 }}><Text style={s.greeting}>{greeting}, {profile?.firstName || 'there'}.</Text><Text style={s.headerSub}>Here’s what’s happening today.</Text></View></View><Text style={s.date}>{date}</Text>{loading ? <View style={s.loading}><ActivityIndicator color={colors.green} /><Text style={s.muted}>Putting your brief together…</Text></View> : <View style={s.dailyMessage}><AssistantAvatar avatarId={profile?.assistantAvatarId} size="tiny" /><Text style={s.summary}>{assistantSummary(brief!, profile?.assistantPersonality)}</Text></View>}</View>
 
       {notice ? <Text style={s.notice}>{notice}</Text> : null}
 
@@ -188,10 +185,10 @@ function EmptyService({ service, detail, onPress }: { service: string; detail: s
 const s = StyleSheet.create({
   screen: { backgroundColor: colors.cream },
   page: { padding: 20, paddingTop: 64, paddingBottom: 36, gap: 14 },
-  header: { gap: 5, marginBottom: 8 },
+  header: { gap: 8, marginBottom: 8 }, greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 }, headerSub: { color: colors.muted, fontSize: 15, marginTop: 2 }, dailyMessage: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: colors.white, borderRadius: 14, padding: 12, marginTop: 8, borderWidth: 1, borderColor: colors.border },
   greeting: { color: colors.ink, fontWeight: '800', fontSize: 28 },
   date: { color: colors.muted, fontSize: 15 },
-  summary: { color: colors.ink, fontSize: 18, lineHeight: 27, marginTop: 14, maxWidth: 560 },
+  summary: { color: colors.ink, fontSize: 16, lineHeight: 23, flex: 1, maxWidth: 560 },
   loading: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
   muted: { color: colors.muted },
   notice: { color: colors.muted, backgroundColor: colors.peach, borderRadius: 12, padding: 12, lineHeight: 19 },
