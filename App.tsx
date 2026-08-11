@@ -21,6 +21,8 @@ import { WidgetPreviewScreen } from './src/screens/WidgetPreviewScreen';
 import { AssistantStyleScreen } from './src/screens/AssistantStyleScreen';
 import { ChangeAssistantNameScreen, ChangeAssistantPictureScreen, MyAssistantScreen } from './src/screens/MyAssistantScreen';
 import { WidgetDataService } from './src/services/WidgetDataService';
+import { MonetizationProvider } from './src/context/MonetizationContext';
+import { UpgradeScreen } from './src/screens/UpgradeScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const linking:any={prefixes:['myassistant://','app://'],config:{screens:{Main:{screens:{Tasks:'tasks'}},Money:'money',CalendarAssistant:'calendar',EmailAssistant:'email'}}};
@@ -34,7 +36,7 @@ export default function App() {
   const [initial, setInitial] = useState<keyof RootStackParamList>('Welcome');
   useEffect(() => { AsyncStorage.getItem('session').then(s => { if (s) { setInitial('Main'); WidgetDataService.refresh().catch(()=>{}); } }).finally(() => setTimeout(() => setReady(true), 650)); }, []);
   if (!ready) return <Splash />;
-  return <AuthProvider><NavigationContainer linking={linking}><Stack.Navigator initialRouteName={initial} screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.cream }, headerTintColor: colors.ink, contentStyle: { backgroundColor: colors.cream } }}>
+  return <AuthProvider><MonetizationProvider><NavigationContainer linking={linking}><Stack.Navigator initialRouteName={initial} screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.cream }, headerTintColor: colors.ink, contentStyle: { backgroundColor: colors.cream } }}>
     <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
     <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Welcome back' }} />
     <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Create account' }} />
@@ -42,6 +44,7 @@ export default function App() {
     <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
     <Stack.Screen name="Guided" component={GuidedAssistantScreen} options={({ route }) => ({ title: route.params.category })} />
     <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Your assistant' }} />
+    <Stack.Screen name="Upgrade" component={UpgradeScreen} options={{ title: 'Assistant Plus' }} />
     <Stack.Screen name="MyAssistant" component={MyAssistantScreen} options={{ title: 'My Assistant' }} />
     <Stack.Screen name="ChangeAssistantPicture" component={ChangeAssistantPictureScreen} options={{ title: 'Change Picture' }} />
     <Stack.Screen name="ChangeAssistantName" component={ChangeAssistantNameScreen} options={{ title: 'Change Name' }} />
@@ -54,5 +57,5 @@ export default function App() {
     <Stack.Screen name="BudgetSetup" component={BudgetSetupScreen} options={{ title: 'Set up your budget' }} />
     <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} options={{ title: 'Home Screen Widget' }} />
     <Stack.Screen name="WidgetPreview" component={WidgetPreviewScreen} options={{ title: 'Widget Preview' }} />
-  </Stack.Navigator></NavigationContainer></AuthProvider>;
+  </Stack.Navigator></NavigationContainer></MonetizationProvider></AuthProvider>;
 }

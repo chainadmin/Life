@@ -7,6 +7,7 @@ import { card, colors } from '../theme';
 import { AssistantPersonality, CalendarEvent, EmailMessage, IntegrationStatus, MoneySummary, Task } from '../types';
 import { WidgetDataService } from '../services/WidgetDataService';
 import { AssistantAvatar } from '../components/AssistantAvatar';
+import { AssistantBannerAd } from '../components/AssistantBannerAd';
 
 type BriefData = {
   status: IntegrationStatus;
@@ -131,6 +132,7 @@ export function HomeScreen({ navigation }: any) {
         <Section title="Money" icon="$">
           {money?.availableToday!=null?<><Text style={s.primary}>You have about ${Math.round(money.availableToday).toLocaleString()} available today.</Text>{money.nextBill&&<Text style={s.detail}>Next bill: {money.nextBill.name} — ${Math.round(money.nextBill.amount).toLocaleString()} {new Date(`${money.nextBill.nextDueDate}T12:00:00`).toLocaleDateString([],{weekday:'long'})}</Text>}<Action label="View Money" onPress={()=>navigation.getParent()?.navigate('Money')}/></>:<><Text style={s.primary}>Set up your budget and I can estimate what you can safely spend each day.</Text><Action label="Set Up Budget" onPress={()=>navigation.getParent()?.navigate('BudgetSetup')}/></>}
         </Section>
+        <AssistantBannerAd />
         <Section title="Your day" icon="☀">
           {brief?.status.calendar.connected ? (
             brief.events.length ? <>
