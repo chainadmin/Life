@@ -54,3 +54,10 @@ CREATE TABLE IF NOT EXISTS widget_preferences (
   preferences JSONB NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Monetization records contain account/usage metadata only, never assistant content.
+CREATE TABLE IF NOT EXISTS subscriptions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, plan TEXT NOT NULL DEFAULT 'free' CHECK(plan IN ('free','plus','school')), status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','expired','cancelled','trial')), provider TEXT, provider_subscription_id TEXT, current_period_start TIMESTAMPTZ, current_period_end TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS subscriptions_user_idx ON subscriptions(user_id,status);
+CREATE TABLE IF NOT EXISTS ai_usage (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, usage_date DATE NOT NULL, messages_used INTEGER NOT NULL DEFAULT 0, rewarded_messages INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(user_id,usage_date));
+CREATE TABLE IF NOT EXISTS ad_rewards (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, reward_type TEXT NOT NULL, reward_amount INTEGER NOT NULL, provider_reference TEXT NOT NULL UNIQUE, status TEXT NOT NULL CHECK(status IN ('pending','granted','rejected')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), redeemed_at TIMESTAMPTZ);
+CREATE INDEX IF NOT EXISTS ad_rewards_user_date_idx ON ad_rewards(user_id,created_at);
